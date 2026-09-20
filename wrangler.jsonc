@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "line-to-gchat",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "observability": { "enabled": true }
+
+  // ストレージ(R2/KV/D1)は使いません。クレジットカード不要の Workers 無料プランで動きます。
+  //
+  // ↓ Secrets (wrangler secret put で登録。詳細は README)
+  //   LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN
+  //   GOOGLE_CHAT_WEBHOOK_URL / MEDIA_SIGNING_SECRET / TARGET_LINE_GROUP_IDS
+}
