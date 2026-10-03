@@ -23,6 +23,7 @@ export interface ForwardContext {
   /** メディアURLの origin (例: https://line-to-gchat.xxx.workers.dev) */
   baseUrl: string;
   line: LineClient;
+  /** 転送対象のID。空Setならすべてのグループ/複数人トークを転送する */
   targets: Set<string>;
 }
 
@@ -42,6 +43,7 @@ const MESSAGE_LABEL: Record<string, string> = {
   sticker: "スタンプ",
 };
 
+/** 空文字や未設定なら空Set。空Setは「すべてのグループ/複数人トーク」を意味する */
 export function parseTargets(raw: string | undefined): Set<string> {
   return new Set((raw ?? "").split(/[\s,]+/).filter(Boolean));
 }
@@ -87,7 +89,7 @@ async function processEvent(ev: LineEvent, c: ForwardContext): Promise<void> {
 
   const chatId = chatIdOf(ev.source);
   if (!chatId) return; // 1:1トークは対象外
-  if (!c.targets.has(chatId)) {
+  if (c.targets.size > 0 && !c.targets.has(chatId)) {
     // wrangler tail でこのログからIDを確認し、TARGET_LINE_GROUP_IDS に登録する
     console.log(`[line] skipped (not in TARGET_LINE_GROUP_IDS): ${describeSource(ev.source)}`);
     return;

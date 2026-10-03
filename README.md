@@ -99,7 +99,8 @@ LINE Developers の **Webhook URL** に `https://…workers.dev/webhook` を設�
    # → Cxxxxxxxx,Cyyyyyyyy
    ```
 
-これで、対象グループの投稿が Google Chat に流れ始めます。**IDを登録するまでは何も転送されません**（安全側の挙動）。
+これで、対象グループの投稿が Google Chat に流れ始めます。
+`TARGET_LINE_GROUP_IDS` を未設定／空にすると、**Botが参加しているすべてのグループ・複数人トーク**が転送されます（1:1トークは対象外）。特定のグループだけ転送したい場合は ID を設定してください。
 
 ## ローカル開発とテスト
 
@@ -119,7 +120,7 @@ npm test                         # 署名検証・転送ロジック・メディ
 | `LINE_CHANNEL_ACCESS_TOKEN` | Secret | 表示名・グループ名・メディア取得のLINE API呼び出し |
 | `GOOGLE_CHAT_WEBHOOK_URL` | Secret | 転送先スペースの Incoming Webhook |
 | `MEDIA_SIGNING_SECRET` | Secret | メディアURLの署名鍵 |
-| `TARGET_LINE_GROUP_IDS` | Secret | 転送対象のグループID/ルームID（カンマ区切り） |
+| `TARGET_LINE_GROUP_IDS` | Secret | 転送対象のグループID/ルームID（カンマ区切り。空ならすべて転送） |
 | `PUBLIC_BASE_URL` | Var (任意) | メディアURLの origin を固定したい場合 |
 
 ## エンドポイント
@@ -132,7 +133,7 @@ npm test                         # 署名検証・転送ロジック・メディ
 
 ## トラブルシューティング
 
-- **何も転送されない**: `wrangler tail` を確認。`skipped` が出ていれば `TARGET_LINE_GROUP_IDS` の未設定/不一致です。`missing bindings/secrets` が出ていれば Secret の登録漏れです。
+- **何も転送されない**: `wrangler tail` を確認。`skipped` が出ていれば `TARGET_LINE_GROUP_IDS` が設定されていて、対象外のIDです。`missing bindings/secrets` が出ていれば Secret の登録漏れです。
 - **LINEのWebhook検証が失敗する**: URL末尾が `/webhook` か、`LINE_CHANNEL_SECRET` が正しいかを確認。
 - **送信者が「LINEユーザー」になる**: ユーザーがプロフィール情報の利用に同意していない場合、LINE側から表示名が取れません。
 - **画像がChatに表示されない / リンクが開けない**: 「保存期間が過ぎた」と出る場合はLINE側で削除済みです。カスタムドメインを使う場合は、WAF/Bot Fight Mode が Google の画像プロキシを弾いていないかも確認してください。

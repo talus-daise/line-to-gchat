@@ -5,7 +5,7 @@ export interface Env {
   GOOGLE_CHAT_WEBHOOK_URL: string;
   /** メディアURLの署名用。推測不能なランダム文字列 */
   MEDIA_SIGNING_SECRET: string;
-  /** 転送対象のグループID/ルームID (カンマ区切り)。空なら何も転送せずログのみ */
+  /** 転送対象のグループID/ルームID (カンマ区切り)。空ならすべて転送 */
   TARGET_LINE_GROUP_IDS?: string;
 
   // ---- Vars ----
