@@ -1,14 +1,16 @@
+import { unicodeForLineEmoji } from "./line-emoji-map";
 import type { LineEmoji, LineMessage } from "./types";
 
 /**
- * LINE絵文字(商品絵文字)は本文中に `$` のプレースホルダで入ってくる。
- * そのままだと `$` が表示されてしまうので、位置(UTF-16)を頼りに置き換える。
+ * LINE絵文字(商品絵文字)は本文中にプレースホルダで入ってくる。
+ * そのままだとプレースホルダがそのまま表示されてしまうので、位置(UTF-16)を頼りに
+ * 対応するUnicode絵文字へ置き換える。対応表に無いものは `□` にする。
  */
 export function applyLineEmojis(text: string, emojis: LineEmoji[] | undefined): string {
   if (!emojis?.length) return text;
   let out = text;
   for (const e of [...emojis].sort((a, b) => b.index - a.index)) {
-    out = out.slice(0, e.index) + "□" + out.slice(e.index + e.length);
+    out = out.slice(0, e.index) + (unicodeForLineEmoji(e) ?? "□") + out.slice(e.index + e.length);
   }
   return out;
 }
