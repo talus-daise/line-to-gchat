@@ -8,6 +8,13 @@ export interface Env {
   /** 転送対象のグループID/ルームID (カンマ区切り)。空ならすべて転送 */
   TARGET_LINE_GROUP_IDS?: string;
 
+  // ---- Bindings ----
+  /**
+   * 転送済みメッセージの要約を保持する KV。設定すると「返信で引用」が有効になる。
+   * 未設定でも動作し、その場合は引用元を表示せず通常どおり転送する。
+   */
+  REPLY_CONTEXT?: KVNamespace;
+
   // ---- Vars ----
   /** カスタムドメインを使う場合などに公開URLの origin を固定する (省略時はリクエストの origin) */
   PUBLIC_BASE_URL?: string;
@@ -26,7 +33,7 @@ export interface LineEmoji {
 }
 
 export type LineMessage =
-  | { id: string; type: "text"; text: string; emojis?: LineEmoji[] }
+  | { id: string; type: "text"; text: string; emojis?: LineEmoji[]; quotedMessageId?: string }
   | {
       id: string;
       type: "image";
@@ -49,6 +56,7 @@ export type LineMessage =
       packageId: string;
       stickerId: string;
       keywords?: string[];
+      quotedMessageId?: string;
     };
 
 export interface LineEvent {
