@@ -13,9 +13,13 @@ import {
   type ChatMessage,
 } from "./gchat";
 import type { LineClient } from "./line";
+import { applyLineEmojis } from "./line-text";
 import { buildMediaLinks, type MediaKind, type MediaLinks } from "./media";
-import type { Env, LineEmoji, LineEvent, LineMessage, LineSource } from "./types";
+import { lookupQuoted, quoteBlock, storeForwarded } from "./reply-context";
+import type { Env, LineEvent, LineMessage, LineSource } from "./types";
 import { formatBytes, formatDuration } from "./util";
+
+export { applyLineEmojis };
 
 export interface ForwardContext {
   env: Env;
@@ -53,19 +57,6 @@ export function chatIdOf(source: LineSource): string | null {
   if (source.type === "group") return source.groupId;
   if (source.type === "room") return source.roomId;
   return null;
-}
-
-/**
- * LINE絵文字(商品絵文字)は本文中に `$` のプレースホルダで入ってくる。
- * そのままだと `$` が表示されてしまうので、位置(UTF-16)を頼りに置き換える。
- */
-export function applyLineEmojis(text: string, emojis: LineEmoji[] | undefined): string {
-  if (!emojis?.length) return text;
-  let out = text;
-  for (const e of [...emojis].sort((a, b) => b.index - a.index)) {
-    out = out.slice(0, e.index) + "□" + out.slice(e.index + e.length);
-  }
-  return out;
 }
 
 export async function processEvents(events: LineEvent[], ctx: ForwardContext): Promise<void> {
@@ -107,6 +98,8 @@ async function processEvent(ev: LineEvent, c: ForwardContext): Promise<void> {
 
   try {
     await forwardMessage(ev.message, who, c);
+    // 転送できたメッセージだけを引用元として記憶する
+    await storeForwarded(c.env, ev.message, who.name);
   } catch (err) {
     console.error(`[forward] ${ev.message.type} ${ev.message.id} failed:`, describeError(err));
     const label = MESSAGE_LABEL[ev.message.type] ?? ev.message.type;
@@ -123,12 +116,20 @@ async function forwardMessage(msg: LineMessage, who: Who, c: ForwardContext): Pr
   const head = `*${sanitizeInline(who.name)}*  ·  ${sanitizeInline(who.chatName)}`;
   const subtitle = `LINE・${who.chatName}`;
 
+  // LINEで引用返信されていたら、転送済みメッセージの要約を引用ブロックとして先頭に付ける。
+  const quoted =
+    "quotedMessageId" in msg && msg.quotedMessageId
+      ? await lookupQuoted(c.env, msg.quotedMessageId)
+      : null;
+  const quote = quoted ? quoteBlock(quoted) : "";
+
   /** カード送信。カードが拒否(400)されたらリンク付きテキストにフォールバック */
   const sendCard = async (
     label: string,
     widgets: unknown[],
     fallbackText: string,
     extraSubtitle = "",
+    quoteText = "",
   ) => {
     const card = buildCardMessage({
       id: `line-${msg.id}`,
@@ -137,12 +138,14 @@ async function forwardMessage(msg: LineMessage, who: Who, c: ForwardContext): Pr
       avatarUrl: who.avatarUrl,
       widgets,
     });
+    // カードとテキストは同一メッセージに同居できるため、引用は text として添える
+    const message: ChatMessage = quoteText ? { ...card, text: quoteText } : card;
     try {
-      await send(card);
+      await send(message);
     } catch (err) {
       if (err instanceof ChatApiError && err.status === 400) {
         console.warn(`[forward] card rejected for ${label}, falling back to text: ${err.detail}`);
-        await send({ text: `${head}\n${fallbackText}` });
+        await send({ text: `${quoteText}${head}\n${fallbackText}` });
         return;
       }
       throw err;
@@ -163,7 +166,7 @@ async function forwardMessage(msg: LineMessage, who: Who, c: ForwardContext): Pr
       const body = escapeChatText(applyLineEmojis(msg.text, msg.emojis));
       const chunks = chunkText(body);
       for (const [i, chunk] of chunks.entries()) {
-        await send({ text: i === 0 ? `${head}\n${chunk}` : chunk });
+        await send({ text: i === 0 ? `${quote}${head}\n${chunk}` : chunk });
       }
       return;
     }
@@ -241,6 +244,7 @@ async function forwardMessage(msg: LineMessage, who: Who, c: ForwardContext): Pr
         ],
         `🏷 スタンプ${kw ? `（${escapeChatText(kw)}）` : ""}`,
         "スタンプ",
+        quote,
       );
       return;
     }

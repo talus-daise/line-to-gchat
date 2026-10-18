@@ -3,10 +3,14 @@
   "name": "line-to-gchat",
   "main": "src/index.ts",
   "compatibility_date": "2025-09-01",
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
 
-  // ストレージ(R2/KV/D1)は使いません。クレジットカード不要の Workers 無料プランで動きます。
-  //
+  // 返信の引用元を覚えておくための KV。無料プランで使えます。
+  //   npx wrangler kv namespace create REPLY_CONTEXT
+  // で作成し、出力された id を下のプレースホルダと差し替えてください。
+  // 未設定でも動作します（その場合は引用元を表示せず、通常どおり転送）。
+  "kv_namespaces": [{ "binding": "REPLY_CONTEXT", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }],
+
   // ↓ Secrets (wrangler secret put で登録。詳細は README)
   //   LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN
   //   GOOGLE_CHAT_WEBHOOK_URL / MEDIA_SIGNING_SECRET / TARGET_LINE_GROUP_IDS
